@@ -59,6 +59,120 @@ class Cki_mblist_ft extends EE_Fieldtype
 		
 		return form_dropdown($this->field_name, $member_list, $data, 'dir="'.$text_direction.'" id="'.$this->field_id.'"').$deleted_user_message;
 	}
+	/*
+	 * Matrix Compatiblity
+	*/
+
+	function display_cell( $data )
+	{
+		$text_direction = ($this->settings['field_text_direction'] == 'rtl') ? 'rtl' : 'ltr';
+		$member_list = array();
+		$deleted_user_message = '';
+		
+		$this->EE->db->select('group_title, member_id, screen_name');
+		$this->EE->db->from('exp_members');
+		$this->EE->db->join('exp_member_groups', 'exp_members.group_id = exp_member_groups.group_id');
+		$this->EE->db->order_by('exp_member_groups.group_id asc, exp_members.screen_name');
+		if($this->settings[CKI_MBLIST_KEY]['group_ids']) {
+			$this->EE->db->where_in('exp_members.group_id', explode('|', $this->settings[CKI_MBLIST_KEY]['group_ids'])); 
+		}
+		$q = $this->EE->db->get();
+		
+		//Create a blank option
+		$member_list[''] = "None";
+		
+		//Setup the member list array to send to the form_dropdown function
+		foreach($q->result_array() as $member)
+		{
+			$member_list[$member['group_title']][$member['member_id']] = $member['screen_name'];
+			$member_id_array[$member['member_id']] = $member['screen_name'];
+		}
+		
+		//Quickly check to see (if on the EDIT page) that the previously selected member still exists
+		if(!array_key_exists($data, $member_id_array) && $data != '')
+		{
+			//If not, append a warning message
+			$deleted_user_message = "&nbsp;<span class='notice'>Selected member no longer exists.</span>";
+		}
+		
+		return form_dropdown($this->cell_name, $member_list, $data, 'dir="'.$text_direction.'" id="'.$this->field_id.'"').$deleted_user_message;
+	}
+
+	function display_cell_settings( $data )
+	{
+		$this->EE->db->select('group_id, group_title');
+		$this->EE->db->from('exp_member_groups');
+		$this->EE->db->order_by('group_id asc');
+		$q = $this->EE->db->get();
+		
+		$field_options = array();
+		
+		//Setup the member list array to send to the form_dropdown function
+		foreach($q->result_array() as $group)
+		{
+			$field_options['group_ids'][$group['group_id']] = $group['group_title'];
+		}
+		
+		// is this a new field?
+		$field_values = (array_key_exists(CKI_MBLIST_KEY, $data)) ?
+			$data[CKI_MBLIST_KEY] :
+			$this->_normalise_settings()
+		;
+		/*
+		$this->EE->table->add_row(
+			'<strong>' . lang('group_ids_label') . '</strong><br />' . lang('group_ids_label_notes'),
+			form_multiselect('cki_mblist[group_ids][]', $field_options['group_ids'], explode('|', $field_values['group_ids']))
+		);
+		*/
+		return '<strong>' . lang('group_ids_label') . '</strong><br />' . lang('group_ids_label_notes') ."<br>".
+			form_multiselect('cki_mblist[group_ids][]', $field_options['group_ids'], explode('|', $field_values['group_ids']));
+	}
+
+	function save_cell_settings( $data )
+	{
+		error_log('save_cell_settings',0);
+		return array(CKI_MBLIST_KEY => $this->_normalise_settings($_POST[CKI_MBLIST_KEY], TRUE));		
+	}
+
+	function validate_cell( $data )
+	{
+		error_log('validate_cell',0);
+
+		//Check that that a selection has been made
+		if($data != '')
+		{
+			//Query the database to see if selected member exists
+			$q = $this->EE->db->get_where('exp_members', array('member_id' => $data), 1);
+			
+			if($q->num_rows() ===  1)
+			{
+				return TRUE;
+			}else{
+				return "The Member you have selected does not exist";
+			}
+		}
+
+		if ($this->settings['col_required'] == 'y') {
+			if (! $data) {
+				return lang('col_required');
+			}
+		}
+
+		return TRUE;
+	}
+
+	function save_cell( $data )
+	{
+		error_log('save cell - $data',0);
+	  if ($data == '&nbsp;') $data = '';
+
+	  return $data;
+	}
+
+	function post_save_cell( $data )
+	{
+		error_log('post save cell',0);
+	}
 	//END
 	
 	
