@@ -227,6 +227,29 @@ class Cki_mblist_ft extends EE_Fieldtype
 			
 		}
 	}
+
+	function replace_username($data, $params=array(), $tagdata=FALSE)
+	{
+		if ($data !== FALSE)
+		{
+			if(is_array($data) && array_key_exists('username', $data))
+			{
+				return $data['username'];
+			}
+		}
+	}
+
+	function replace_member_id($data, $params=array(), $tagdata=FALSE)
+	{
+		if ($data !== FALSE)
+		{
+			if(is_array($data) && array_key_exists('member_id', $data))
+			{
+				return $data['member_id'];
+			}
+		}
+	}
+
 	
 	
 	// ====================================
